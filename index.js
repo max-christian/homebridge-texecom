@@ -40,20 +40,20 @@ TexecomPlatform.prototype = {
 		});
 		
 		serialPort.on("open", function () {
-  			console.log("Serial port opened");
+  			debug("Serial port opened");
   			serialPort.on('data', function(data) {
-    			console.log("Serial data received: " + data);
+    			debug("Serial data received: " + data);
     			// Received data is a zone update
     			if(S(data).contains('Z')){
     				var zone_data = Number(S(S(data).chompLeft('"Z')).left(4).s);
     				var updated_zone = Number(S(S(data).chompLeft('"Z')).left(3).s);
     				var zone_active = S(zone_data).endsWith('1');
-    				console.log("Zone update received for zone " + updated_zone);
-    				console.log("Zone active: " + zone_active);
+    				debug("Zone update received for zone " + updated_zone);
+    				debug("Zone active: " + zone_active);
     				
     				for(var i = 0; i < zoneCount; i++){
     					if(zoneAccessories[i].zone_number == updated_zone){
-    						console.log("Zone match found, updating zone status in HomeKit to " + zone_active);
+    						debug("Zone match found, updating zone status in HomeKit to " + zone_active);
     						zoneAccessories[i].changeHandler(zone_active);
     					}
     				}
@@ -137,7 +137,7 @@ TexecomAccessory.prototype = {
         this.changeHandler = function(status){
             var d = new Date();
             var newState = status;
-            console.log("Changing state with changeHandler to " + newState);
+            debug("Changing state with changeHandler to " + newState);
             changeAction(newState);
         }.bind(this);
 
