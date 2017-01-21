@@ -1,0 +1,32 @@
+{
+  "name": "homebridge-texecom",
+  "description": "A plugin for homebridge (https://github.com/nfarina/homebridge) to integrate Texecom Premier Elite zones into HomeKit",
+  "version": "1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kieranmjones/homebridge-texecom"
+  },
+  "license": "MIT",
+  "preferGlobal": true,
+  "keywords": [
+    "homebridge-plugin",
+    "motion",
+    "smoke",
+    "contact",
+    "carbon monoxide",
+    "door",
+    "sensor",
+    "intruder",
+    "Texecom"
+  ],
+  "engines": {
+    "node": ">=0.12.0",
+    "homebridge": ">=0.2.5"
+  },
+  "dependencies": {
+    "serialport": "^1.7.1",
+    "zpad": "^0.5.0",
+    "string": "^3.3.3",
+    "debug": "^2.2.0"
+  }
+}
