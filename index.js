@@ -18,7 +18,13 @@ function TexecomPlatform(log, config){
     this.log = log;
     this.serial_device = config["serial_device"];
     this.baud_rate = config["baud_rate"];
-    this.zones = config["zones"] || [];
+    this.zonesconfig = config["zones"];
+    
+    this.zones = [];
+    for(var i = 0; i < zonesconfig.length; i++){
+		zones.splice(this.zones.config[i].zone_number, 0, this.zonesconfig[i]);		
+    }
+
 }
 
 TexecomPlatform.prototype = {
@@ -51,11 +57,11 @@ TexecomPlatform.prototype = {
     				debug("Zone update received for zone " + updated_zone);
     				debug("Zone active: " + zone_active);
     				
-    				for(var i = 0; i < zoneCount; i++){
-    					if(zoneAccessories[i].zone_number == updated_zone){
-    						debug("Zone match found, updating zone status in HomeKit to " + zone_active);
-    						zoneAccessories[i].changeHandler(zone_active);
-    					}
+    				if(zoneAccessories[updated_zone]) {
+    					debug("Zone match found, updating zone status in HomeKit to " + zone_active);
+    					zoneAccessories[i].changeHandler(zone_active);
+    				} else {
+    					debug("Zone update received for unconfigured zone");
     				}
     				
     			}
