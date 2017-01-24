@@ -24,7 +24,7 @@ Example:
             	,
             	{
                 	"name": "Front Door",
-                	"keyword": "15",
+                	"zone_number": "15",
                 	"zone_type": "contact"
             	}
             ]
