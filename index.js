@@ -18,12 +18,7 @@ function TexecomPlatform(log, config){
     this.log = log;
     this.serial_device = config["serial_device"];
     this.baud_rate = config["baud_rate"];
-    this.zonesconfig = config["zones"];
-    
-    this.zones = [];
-    for(var i = 0; i < zonesconfig.length; i++){
-		zones.splice(this.zones.config[i].zone_number, 0, this.zonesconfig[i]);		
-    }
+    this.zones = config["zones"] || [];
 
 }
 
@@ -49,20 +44,27 @@ TexecomPlatform.prototype = {
   			debug("Serial port opened");
   			serialPort.on('data', function(data) {
     			debug("Serial data received: " + data);
+    			
     			// Received data is a zone update
     			if(S(data).contains('Z')){
+    			
+    				// Extract the data from the serial line received
     				var zone_data = Number(S(S(data).chompLeft('"Z')).left(4).s);
+    				// Extract the zone number that is being updated
     				var updated_zone = Number(S(S(data).chompLeft('"Z')).left(3).s);
+    				// Is the zone active?
     				var zone_active = S(zone_data).endsWith('1');
+    				
     				debug("Zone update received for zone " + updated_zone);
     				debug("Zone active: " + zone_active);
     				
-    				if(zoneAccessories[updated_zone]) {
-    					debug("Zone match found, updating zone status in HomeKit to " + zone_active);
-    					zoneAccessories[i].changeHandler(zone_active);
-    				} else {
-    					debug("Zone update received for unconfigured zone");
-    				}
+    				for(var i = 0; i < zoneCount; i++){
+     					if(zoneAccessories[i].zone_number == updated_zone){
+     						debug("Zone match found, updating zone status in HomeKit to " + zone_active);
+     						zoneAccessories[i].changeHandler(zone_active);
+     						break;
+     					}
+ 					}
     				
     			}
   			});
@@ -76,8 +78,8 @@ function TexecomAccessory(log, zoneConfig) {
 
     this.zone_number = zpad(zoneConfig["zone_number"], 3);
     this.name = zoneConfig["name"];
-    this.window_seconds = zoneConfig["window_seconds"] || 62;
     this.zone_type = zoneConfig["zone_type"] || "motion";
+    this.dwell_time = zoneConfig["dwell"] || 0;
 
     if(zoneConfig["sn"]){
         this.sn = zoneConfig["sn"];
@@ -141,10 +143,20 @@ TexecomAccessory.prototype = {
         }
 
         this.changeHandler = function(status){
-            var d = new Date();
             var newState = status;
+            debug("Dwell = " + this.dwell_time);
+            
+            if(!newState && this.dwell_time > 0){
+            	this.dwell_timer = setTimeout(function(){ changeAction(newState); }.bind(this), this.dwell_time);
+            } else {
+            	if(this.dwell_timer){
+            		clearTimeout(this.dwell_timer);
+            	}
+            	changeAction(newState);
+            }
+            
             debug("Changing state with changeHandler to " + newState);
-            changeAction(newState);
+            
         }.bind(this);
 
         return [informationService, service];

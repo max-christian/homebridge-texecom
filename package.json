@@ -1,7 +1,7 @@
 {
   "name": "homebridge-texecom",
   "description": "A plugin for homebridge (https://github.com/nfarina/homebridge) to integrate Texecom Premier Elite zones into HomeKit",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "repository": {
     "type": "git",
     "url": "https://github.com/kieranmjones/homebridge-texecom"

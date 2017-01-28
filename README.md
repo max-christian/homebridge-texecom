@@ -19,13 +19,15 @@ Example:
             	{
                 	"name": "Living Room",
                 	"zone_number": "7",
-                	"zone_type": "motion"
+                	"zone_type": "motion",
+                	"dwell": 1000
             	}
             	,
             	{
                 	"name": "Front Door",
                 	"zone_number": "15",
-                	"zone_type": "contact"
+                	"zone_type": "contact",
+                	"dwell": 1000
             	}
             ]
         }
@@ -50,6 +52,7 @@ This plugin is a platform plugin so you must configure each zone from your Texec
 | `name` | N/A | The name of the sensor as it will appear in HomeKit. |
 | `zone_number` | N/A | The zone number from Texecom |
 | `zone_type` | `"motion"` | The type of zone; motion, contact, smoke, or carbonmonoxide |
+| `dwell` | 0 | The amount of time in ms that a zone stays active after zone activation is cleared by Texecom |
 
 ## Configuring Texecom
 
