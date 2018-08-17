@@ -2,6 +2,8 @@
 
 A plugin for [Homebridge](https://github.com/nfarina/homebridge) that creates HomeKit motion, contact, smoke, or carbon monoxide sensors for alarm zones from a Texecom Premier intruder alarm via a serial connection. 
 
+2018 Update - This plugin is still very much functional, I've attempted to get security system functions working with limited success, however zone sensors won't great. So whilst the project hasn't been updated in a long time, it's working just fine and is still maintained in that sense. If anyone wants to have a crack at getting alarm services working get in touch and I can send what I have so far.
+
 **IMPORTANT** - To use this plugin you will require a Texecom alarm system and a PC-COM or USB-COM serial interface. You must also have nothing already utilising COM1 on the alarm panel,  or be able to move existing modules connected to COM1 to a different COM port on the alarm panel. This plugin DOES NOT currently support IP communication, only serial.
 
 ## Configuration
