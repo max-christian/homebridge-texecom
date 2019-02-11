@@ -5,6 +5,7 @@ var serialport = require("serialport");
 var zpad = require("zpad");
 var S = require('string');
 var crypto = require("crypto");
+var net = require('net');
 
 module.exports = function(homebridge) {
     Service = homebridge.hap.Service;
@@ -19,7 +20,8 @@ function TexecomPlatform(log, config){
     this.serial_device = config["serial_device"];
     this.baud_rate = config["baud_rate"];
     this.zones = config["zones"] || [];
-
+	this.ip_address = config["ip_address"];
+	this.ip_port = config["ip_port"];
 }
 
 TexecomPlatform.prototype = {
@@ -32,44 +34,78 @@ TexecomPlatform.prototype = {
         }
         var zoneCount = zoneAccessories.length;
         callback(zoneAccessories);
-        
-        var SerialPort = serialport.SerialPort; 
 
-		var serialPort = new SerialPort(this.serial_device, {
-  			baudrate: this.baud_rate,
-  			parser: serialport.parsers.readline("\n")
-		});
+		function processData(data) {
+			// Received data is a zone update
+			if(S(data).contains('Z')){
+
+				// Extract the data from the serial line received
+				var zone_data = Number(S(S(data).chompLeft('"Z')).left(4).s);
+				// Extract the zone number that is being updated
+				var updated_zone = Number(S(S(data).chompLeft('"Z')).left(3).s);
+				// Is the zone active?
+				var zone_active = S(zone_data).endsWith('1');
+
+				debug("Zone update received for zone " + updated_zone);
+				debug("Zone active: " + zone_active);
+
+				for(var i = 0; i < zoneCount; i++){
+					if(zoneAccessories[i].zone_number == updated_zone){
+						debug("Zone match found, updating zone status in HomeKit to " + zone_active);
+						zoneAccessories[i].changeHandler(zone_active);
+						break;
+					}
+				}
+
+			}
+		}
+
+		if (this.serial_device) {        
+			var SerialPort = serialport.SerialPort; 
+
+			var serialPort = new SerialPort(this.serial_device, {
+				baudrate: this.baud_rate,
+				parser: serialport.parsers.readline("\n")
+			});
 		
-		serialPort.on("open", function () {
-  			debug("Serial port opened");
-  			serialPort.on('data', function(data) {
-    			debug("Serial data received: " + data);
-    			
-    			// Received data is a zone update
-    			if(S(data).contains('Z')){
-    			
-    				// Extract the data from the serial line received
-    				var zone_data = Number(S(S(data).chompLeft('"Z')).left(4).s);
-    				// Extract the zone number that is being updated
-    				var updated_zone = Number(S(S(data).chompLeft('"Z')).left(3).s);
-    				// Is the zone active?
-    				var zone_active = S(zone_data).endsWith('1');
-    				
-    				debug("Zone update received for zone " + updated_zone);
-    				debug("Zone active: " + zone_active);
-    				
-    				for(var i = 0; i < zoneCount; i++){
-     					if(zoneAccessories[i].zone_number == updated_zone){
-     						debug("Zone match found, updating zone status in HomeKit to " + zone_active);
-     						zoneAccessories[i].changeHandler(zone_active);
-     						break;
-     					}
- 					}
-    				
-    			}
-  			});
-		});
+			serialPort.on("open", function () {
+				debug("Serial port opened");
+				serialPort.on('data', function(data) {
+					debug("Serial data received: " + data);
+					processData(data);
+				});
+			});
+		} else if (this.ip_address) {
+			platform = this;
+			try {
+				connection = net.createConnection(this.ip_port, this.ip_address, function() {
+					platform.log('Connected via IP');
+				});
+			} catch (err) {
+				platform.log(err);
+			}
+			connection.on('data', function(data) {
+				platform.log("received data");
+				debug("IP data received: " + data);
+				processData(data);
+			});
+			connection.on('end', function() {
+				platform.log('IP connection ended');
+			});
 
+			connection.on('close', function() {
+				platform.log('IP connection closed');
+				try {
+					connection = net.createConnection(this.ip_port, this.ip_address, function() {
+						platform.log('Re-connected after loss of connection');
+					});
+				} catch (err) {
+					platform.log(err);
+				}
+			});
+		} else {
+			this.log("Must set either serial_device or ip_address in configuration.");
+		}
     }
 }
 

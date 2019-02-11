@@ -24,9 +24,9 @@
     "homebridge": ">=0.2.5"
   },
   "dependencies": {
-    "serialport": "^4.0.7",
-    "zpad": "^0.5.0",
+    "debug": "^2.2.0",
+    "serialport": "^6.2.2",
     "string": "^3.3.3",
-    "debug": "^2.2.0"
+    "zpad": "^0.5.0"
   }
 }
