@@ -4,11 +4,11 @@ A plugin for [Homebridge](https://github.com/nfarina/homebridge) that creates Ho
 
 You can receive notifications, which can be set to work only when you're away from home:
 
-[[https://github.com/max-christian/homebridge-texecom/images/example-notifications.jpg|alt=example of notifications]]
+![example of notifications](https://github.com/max-christian/homebridge-texecom/blob/master/images/example-notifications.jpg?raw=true)
 
 Another great use is to use the alarm's motion sensors to switch lights on automatically:
 
-[[https://github.com/max-christian/homebridge-texecom/images/example-automation.jpg|alt=example of automation]]
+![example of automation](https://github.com/max-christian/homebridge-texecom/blob/master/images/example-automation.jpg?raw=true)
 
 2018 Update - This plugin is still very much functional, I've attempted to get security system functions working with limited success, however zone sensors won't great. So whilst the project hasn't been updated in a long time, it's working just fine and is still maintained in that sense. If anyone wants to have a crack at getting alarm services working get in touch and I can send what I have so far.
 
