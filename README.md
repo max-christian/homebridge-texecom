@@ -2,9 +2,17 @@
 
 A plugin for [Homebridge](https://github.com/nfarina/homebridge) that creates HomeKit motion, contact, smoke, or carbon monoxide sensors for alarm zones from a Texecom Premier intruder alarm via a serial connection. 
 
+You can receive notifications, which can be set to work only when you're away from home:
+
+[[https://github.com/max-christian/homebridge-texecom/images/example-notifications.jpg|alt=example of notifications]]
+
+Another great use is to use the alarm's motion sensors to switch lights on automatically:
+
+[[https://github.com/max-christian/homebridge-texecom/images/example-automation.jpg|alt=example of automation]]
+
 2018 Update - This plugin is still very much functional, I've attempted to get security system functions working with limited success, however zone sensors won't great. So whilst the project hasn't been updated in a long time, it's working just fine and is still maintained in that sense. If anyone wants to have a crack at getting alarm services working get in touch and I can send what I have so far.
 
-**IMPORTANT** - To use this plugin you will require a Texecom alarm system and a PC-COM or USB-COM serial interface. You must also have nothing already utilising COM1 on the alarm panel,  or be able to move existing modules connected to COM1 to a different COM port on the alarm panel. This plugin DOES NOT currently support IP communication, only serial.
+**IMPORTANT** - To use this plugin you will require a Texecom alarm system and a PC-COM, COM-IP or USB-COM serial interface. If using the PC-COM or USB-COM, you must also have nothing already utilising COM1 on the alarm panel, or be able to move existing modules connected to COM1 to a different COM port on the alarm panel. The support for IP is new and is intended for use with the COM-IP -- we don't know if it works with the SmartCom, so let us know if you get it working.
 
 ## Configuration
 
@@ -39,11 +47,20 @@ Example:
 
 ### Global Configuration
 
+For serial connections:
+
 | Key | Default | Description |
 | --- | --- | --- |
 | `serial_device` | N/A | The serial device on which to connect to Texecom |
 | `baud_rate` | N/A | The baud rate configured in Texecom (Usually 19200) |
 | `zones` | N/A | The individual configuration for each zone in Texecom |
+
+For IP connections:
+
+| Key | Default | Description |
+| --- | --- | --- |
+| `ip_address` | N/A | The IP address of the COM-IP Texecom module |
+| `ip_port` | N/A | The TCP port of the COM-IP Texecom module |
 
 ### Per-zone Configuration
 
@@ -72,7 +89,7 @@ To configure your COM1 port for the Crestron protocol:
 
 Press "Menu" repeatedly to exit the engineer menu.
 
-This plugin DOES NOT currently support IP communication.
+If connecting to a COM-IP, set up the COM-IP as usual and ensure it is working. Then change the configuration for the port the COM-IP is connected to to Crestron as detailed above. This allows the panel to configure the IP address into the module, then changing to Crestron will allow the panel to input/output the correct commands.
 
 ## Future features
 
