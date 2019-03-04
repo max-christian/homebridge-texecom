@@ -10,8 +10,6 @@ Another great use is to use the alarm's motion sensors to switch lights on autom
 
 ![example of automation](https://github.com/max-christian/homebridge-texecom/blob/master/images/example-automation.jpg?raw=true)
 
-2018 Update - This plugin is still very much functional, I've attempted to get security system functions working with limited success, however zone sensors won't great. So whilst the project hasn't been updated in a long time, it's working just fine and is still maintained in that sense. If anyone wants to have a crack at getting alarm services working get in touch and I can send what I have so far.
-
 **IMPORTANT** - To use this plugin you will require a Texecom alarm system and a PC-COM, COM-IP or USB-COM serial interface. If using the PC-COM or USB-COM, you must also have nothing already utilising COM1 on the alarm panel, or be able to move existing modules connected to COM1 to a different COM port on the alarm panel. The support for IP is new and is intended for use with the COM-IP -- we don't know if it works with the SmartCom, so let us know if you get it working.
 
 ## Configuration
@@ -97,4 +95,3 @@ Alarm systems are complicated and have a lot of features, not all them are suita
 
 * **Alarm system services** - Currently this plugin only integrates the zone sensors themselves. In the future the alarm system status itself will be integrated to show intruder alarm status.
 * **Panic buttons** - Investigate the possibility of integrating the medical, panic, and fire buttons into HomeKit as buttons/switches to manually trigger those alerts.
-* **IP integration** - Texecom have an ComIP product, however they have announced a Connect Hub product that features an API and other features specifically designed for home automation. Rather than integrate the legacy ComIP module it is better to wait until the release of the Connect Hub and API.
