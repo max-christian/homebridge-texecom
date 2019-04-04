@@ -20,6 +20,7 @@ function TexecomPlatform(log, config){
     this.serial_device = config["serial_device"];
     this.baud_rate = config["baud_rate"];
     this.zones = config["zones"] || [];
+    this.areas = config["areas"] || [];
 	this.ip_address = config["ip_address"];
 	this.ip_port = config["ip_port"];
 }
@@ -33,11 +34,20 @@ TexecomPlatform.prototype = {
             zoneAccessories.push(zone);
         }
         var zoneCount = zoneAccessories.length;
-        callback(zoneAccessories);
+        
+        var areaAccessories = [];
+        for(var i = 0; i < this.areas.length; i++){
+            var area = new TexecomAccessory(this.log, this.areas[i]);
+            areaAccessories.push(area);
+        }
+        var areaCount = areaAccessories.length;
+
+        callback(zoneAccessories.concat(areaAccessories));
+		platform = this;
 
 		function processData(data) {
 			// Received data is a zone update
-			if(S(data).contains('Z')){
+			if(S(data).startsWith('"Z')){
 
 				// Extract the data from the serial line received
 				var zone_data = Number(S(S(data).chompLeft('"Z')).left(4).s);
@@ -46,8 +56,7 @@ TexecomPlatform.prototype = {
 				// Is the zone active?
 				var zone_active = S(zone_data).endsWith('1');
 
-				platform.log.debug("Zone update received for zone " + updated_zone);
-				platform.log.debug("Zone active: " + zone_active);
+				platform.log("Zone update received for zone " + updated_zone + " active: " + zone_active);
 
 				for(var i = 0; i < zoneCount; i++){
 					if(zoneAccessories[i].zone_number == updated_zone){
@@ -56,7 +65,25 @@ TexecomPlatform.prototype = {
 						break;
 					}
 				}
-
+				
+			} else if (S(data).startsWith('"A') || S(data).startsWith('"D')){
+				
+				// Extract the area number that is being updated
+				var updated_area = Number(S(S(data).substring(2,5)));
+				var armed = S(data).startsWith('"A');
+				if (armed) {
+					platform.log("Area " + updated_area + " armed");
+				} else {
+					platform.log("Area " + updated_area + " disarmed");
+				}
+				
+				for(var i = 0; i < areaCount; i++){
+					if(areaAccessories[i].zone_number == updated_area){
+						platform.log.debug("Area match found, updating area status in HomeKit to " + armed);
+						areaAccessories[i].changeHandler(armed);
+						break;
+					}
+				}
 			}
 		}
 
@@ -69,14 +96,13 @@ TexecomPlatform.prototype = {
 			});
 		
 			serialPort.on("open", function () {
-				platform.log.debug("Serial port opened");
+				platform.log("Serial port opened");
 				serialPort.on('data', function(data) {
 					platform.log.debug("Serial data received: " + data);
 					processData(data);
 				});
-			});
+			});  
 		} else if (this.ip_address) {
-			platform = this;
 			try {
 				connection = net.createConnection(this.ip_port, this.ip_address, function() {
 					platform.log('Connected via IP');
@@ -85,7 +111,6 @@ TexecomPlatform.prototype = {
 				platform.log(err);
 			}
 			connection.on('data', function(data) {
-				platform.log("received data");
 				platform.log.debug("IP data received: " + data);
 				processData(data);
 			});
@@ -112,9 +137,9 @@ TexecomPlatform.prototype = {
 function TexecomAccessory(log, zoneConfig) {
     this.log = log;
 
-    this.zone_number = zpad(zoneConfig["zone_number"], 3);
+    this.zone_number = zpad(zoneConfig["zone_number"] || zoneConfig["area_number"], 3);
     this.name = zoneConfig["name"];
-    this.zone_type = zoneConfig["zone_type"] || "motion";
+    this.zone_type = zoneConfig["zone_type"] || zoneConfig["area_type"] || "motion";
     this.dwell_time = zoneConfig["dwell"] || 0;
 
     if(zoneConfig["sn"]){
@@ -122,8 +147,9 @@ function TexecomAccessory(log, zoneConfig) {
     } else {
         var shasum = crypto.createHash('sha1');
         shasum.update(this.zone_number);
+        
         this.sn = shasum.digest('base64');
-        platform.log.debug('Computed SN ' + this.sn);
+        log.debug('Computed SN ' + this.sn);
     }
 }
 
@@ -167,6 +193,13 @@ TexecomAccessory.prototype = {
             changeAction = function(newState){
                 service.getCharacteristic(Characteristic.CarbonMonoxideDetected)
                         .setValue(newState ? Characteristic.CarbonMonoxideDetected.CO_LEVELS_ABNORMAL : Characteristic.CarbonMonoxideDetected.CO_LEVELS_NORMAL);
+            };
+            break;
+        case "securitysystem":
+            service = new Service.SecuritySystem();
+            changeAction = function(newState){
+                service.getCharacteristic(Characteristic.SecuritySystemCurrentState)
+                        .setValue(newState ? Characteristic.SecuritySystemCurrentState.AWAY_ARM : Characteristic.SecuritySystemCurrentState.DISARMED);
             };
             break;
         default:
