@@ -46,12 +46,12 @@ TexecomPlatform.prototype = {
 				// Is the zone active?
 				var zone_active = S(zone_data).endsWith('1');
 
-				debug("Zone update received for zone " + updated_zone);
-				debug("Zone active: " + zone_active);
+				platform.log.debug("Zone update received for zone " + updated_zone);
+				platform.log.debug("Zone active: " + zone_active);
 
 				for(var i = 0; i < zoneCount; i++){
 					if(zoneAccessories[i].zone_number == updated_zone){
-						debug("Zone match found, updating zone status in HomeKit to " + zone_active);
+						platform.log.debug("Zone match found, updating zone status in HomeKit to " + zone_active);
 						zoneAccessories[i].changeHandler(zone_active);
 						break;
 					}
@@ -69,9 +69,9 @@ TexecomPlatform.prototype = {
 			});
 		
 			serialPort.on("open", function () {
-				debug("Serial port opened");
+				platform.log.debug("Serial port opened");
 				serialPort.on('data', function(data) {
-					debug("Serial data received: " + data);
+					platform.log.debug("Serial data received: " + data);
 					processData(data);
 				});
 			});
@@ -86,7 +86,7 @@ TexecomPlatform.prototype = {
 			}
 			connection.on('data', function(data) {
 				platform.log("received data");
-				debug("IP data received: " + data);
+				platform.log.debug("IP data received: " + data);
 				processData(data);
 			});
 			connection.on('end', function() {
@@ -123,7 +123,7 @@ function TexecomAccessory(log, zoneConfig) {
         var shasum = crypto.createHash('sha1');
         shasum.update(this.zone_number);
         this.sn = shasum.digest('base64');
-        debug('Computed SN ' + this.sn);
+        platform.log.debug('Computed SN ' + this.sn);
     }
 }
 
@@ -180,7 +180,7 @@ TexecomAccessory.prototype = {
 
         this.changeHandler = function(status){
             var newState = status;
-            debug("Dwell = " + this.dwell_time);
+            platform.log.debug("Dwell = " + this.dwell_time);
             
             if(!newState && this.dwell_time > 0){
             	this.dwell_timer = setTimeout(function(){ changeAction(newState); }.bind(this), this.dwell_time);
@@ -191,7 +191,7 @@ TexecomAccessory.prototype = {
             	changeAction(newState);
             }
             
-            debug("Changing state with changeHandler to " + newState);
+            platform.log.debug("Changing state with changeHandler to " + newState);
             
         }.bind(this);
 
