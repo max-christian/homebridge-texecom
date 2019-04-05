@@ -198,9 +198,13 @@ TexecomAccessory.prototype = {
         case "securitysystem":
             service = new Service.SecuritySystem();
             changeAction = function(newState){
+            	var newValue = newState ? Characteristic.SecuritySystemCurrentState.AWAY_ARM : Characteristic.SecuritySystemCurrentState.DISARMED;
                 service.getCharacteristic(Characteristic.SecuritySystemCurrentState)
-                        .setValue(newState ? Characteristic.SecuritySystemCurrentState.AWAY_ARM : Characteristic.SecuritySystemCurrentState.DISARMED);
+                        .setValue(newValue);
+                service.getCharacteristic(Characteristic.SecuritySystemTargetState)
+                        .setValue(newValue);
             };
+            changeAction(false);
             break;
         default:
         	service = new Service.MotionSensor();
