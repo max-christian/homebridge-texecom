@@ -66,24 +66,41 @@ TexecomPlatform.prototype = {
 					}
 				}
 				
-			} else if (S(data).startsWith('"A') || S(data).startsWith('"D')){
+			} else if (S(data).startsWith('"A') || S(data).startsWith('"D') || S(data).startsWith('"L')){
 				
 				// Extract the area number that is being updated
 				var updated_area = Number(S(S(data).substring(2,5)));
-				var armed = S(data).startsWith('"A');
-				if (armed) {
-					platform.log("Area " + updated_area + " armed");
-				} else {
+				var status = S(data).substring(1,2);
+				var stateValue;
+				
+				switch (String(status)) {
+            	case "L":
+            		stateValue = Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED;
+					platform.log("Area " + updated_area + " triggered");
+            		break;
+            	case "D":
+            		stateValue = Characteristic.SecuritySystemCurrentState.DISARMED;
 					platform.log("Area " + updated_area + " disarmed");
-				}
+            		break;
+            	case "A":
+            		stateValue = Characteristic.SecuritySystemCurrentState.AWAY_ARM;
+					platform.log("Area " + updated_area + " armed");
+            		break;
+            	default:
+            		platform.log("Unknown status letter " + status);
+            		return;
+            	}
 				
 				for(var i = 0; i < areaCount; i++){
 					if(areaAccessories[i].zone_number == updated_area){
-						platform.log.debug("Area match found, updating area status in HomeKit to " + armed);
-						areaAccessories[i].changeHandler(armed);
+						platform.log.debug("Area match found, updating area status in HomeKit to " + stateValue);
+						areaAccessories[i].changeHandler(stateValue);
 						break;
 					}
 				}
+				
+			} else {
+				platform.log.debug("Unknown string from Texecom: " + S(data));
 			}
 		}
 
@@ -198,13 +215,12 @@ TexecomAccessory.prototype = {
         case "securitysystem":
             service = new Service.SecuritySystem();
             changeAction = function(newState){
-            	var newValue = newState ? Characteristic.SecuritySystemCurrentState.AWAY_ARM : Characteristic.SecuritySystemCurrentState.DISARMED;
                 service.getCharacteristic(Characteristic.SecuritySystemCurrentState)
-                        .setValue(newValue);
+                        .setValue(newState);
                 service.getCharacteristic(Characteristic.SecuritySystemTargetState)
-                        .setValue(newValue);
+                        .setValue(newState);
             };
-            changeAction(false);
+            changeAction(Characteristic.SecuritySystemCurrentState.DISARMED); // startup default
             break;
         default:
         	service = new Service.MotionSensor();
