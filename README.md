@@ -10,13 +10,13 @@ Another great use is to use the alarm's motion sensors to switch lights on autom
 
 ![example of automation](https://github.com/max-christian/homebridge-texecom/blob/master/images/example-automation.jpg?raw=true)
 
-2018 Update - This plugin is still very much functional, I've attempted to get security system functions working with limited success, however zone sensors won't great. So whilst the project hasn't been updated in a long time, it's working just fine and is still maintained in that sense. If anyone wants to have a crack at getting alarm services working get in touch and I can send what I have so far.
+You can also set automations to happen when you arm the alarm and when the alarm goes off.
 
 **IMPORTANT** - To use this plugin you will require a Texecom alarm system and a PC-COM, COM-IP or USB-COM serial interface. If using the PC-COM or USB-COM, you must also have nothing already utilising COM1 on the alarm panel, or be able to move existing modules connected to COM1 to a different COM port on the alarm panel. The support for IP is new and is intended for use with the COM-IP -- we don't know if it works with the SmartCom, so let us know if you get it working.
 
 ## Configuration
 
-Texecom zones must be configured individually in the Homebridge config.json file with the appropriate zone number from Texecom.
+Texecom zones must be configured individually in the Homebridge config.json file with the appropriate zone number from Texecom. Configuring areas is optional, but is required if you want to see if the alarm if set or have automations or notifications when the alarm is armed, disarmed or triggered. You probably have many zones and only one area.
 
 Example:
 
@@ -39,6 +39,9 @@ Example:
                 	"zone_type": "contact",
                 	"dwell": 1000
             	}
+            ],
+            "areas": [
+                {"name": "Texecom Alarm","area_number": "1","area_type": "securitysystem","dwell": 0}
             ]
         }
     ]
@@ -68,10 +71,19 @@ This plugin is a platform plugin so you must configure each zone from your Texec
 
 | Key | Default | Description |
 | --- | --- | --- |
-| `name` | N/A | The name of the sensor as it will appear in HomeKit. |
+| `name` | N/A | The name of the area as it will appear in HomeKit, e.g. 'Texecom Alarm'. |
 | `zone_number` | N/A | The zone number from Texecom |
 | `zone_type` | `"motion"` | The type of zone; motion, contact, smoke, or carbonmonoxide |
 | `dwell` | 0 | The amount of time in ms that a zone stays active after zone activation is cleared by Texecom |
+
+### Per-area Configuration
+
+| Key | Default | Description |
+| --- | --- | --- |
+| `name` | N/A | The name of the sensor as it will appear in HomeKit. |
+| `area_number` | N/A | The zone number from Texecom |
+| `area_type` | `"securitysystem"` | The type of area; only securitysystem is supported. |
+| `dwell` | 0 |  |
 
 ## Configuring Texecom
 
@@ -95,6 +107,4 @@ If connecting to a COM-IP, set up the COM-IP as usual and ensure it is working. 
 
 Alarm systems are complicated and have a lot of features, not all them are suitable for integrating to HomeKit but many of them can be integrated.
 
-* **Alarm system services** - Currently this plugin only integrates the zone sensors themselves. In the future the alarm system status itself will be integrated to show intruder alarm status.
 * **Panic buttons** - Investigate the possibility of integrating the medical, panic, and fire buttons into HomeKit as buttons/switches to manually trigger those alerts.
-* **IP integration** - Texecom have an ComIP product, however they have announced a Connect Hub product that features an API and other features specifically designed for home automation. Rather than integrate the legacy ComIP module it is better to wait until the release of the Connect Hub and API.
