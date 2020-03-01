@@ -81,7 +81,7 @@ This plugin is a platform plugin so you must configure each zone from your Texec
 | Key | Default | Description |
 | --- | --- | --- |
 | `name` | N/A | The name of the sensor as it will appear in HomeKit. |
-| `area_number` | N/A | The zone number from Texecom |
+| `area_number` | N/A | The area number from Texecom, usually 1. |
 | `area_type` | `"securitysystem"` | The type of area; only securitysystem is supported. |
 | `dwell` | 0 |  |
 
