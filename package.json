@@ -25,7 +25,7 @@
   },
   "dependencies": {
     "debug": "^2.2.0",
-    "serialport": "^6.2.2",
+    "serialport": "^7.0.2",
     "string": "^3.3.3",
     "zpad": "^0.5.0"
   }
