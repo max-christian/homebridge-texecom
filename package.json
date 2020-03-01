@@ -4,7 +4,7 @@
   "version": "3.0.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/kieranmjones/homebridge-texecom"
+    "url": "https://github.com/max-christian/homebridge-texecom"
   },
   "license": "MIT",
   "preferGlobal": true,
