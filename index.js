@@ -121,7 +121,7 @@ TexecomPlatform.prototype = {
 			});  
 		} else if (this.ip_address) {
 			try {
-				connection = net.createConnection(this.ip_port, this.ip_address, function() {
+				connection = net.createConnection(platform.ip_port, platform.ip_address, function() {
 					platform.log('Connected via IP');
 				});
 			} catch (err) {
@@ -138,7 +138,7 @@ TexecomPlatform.prototype = {
 			connection.on('close', function() {
 				platform.log('IP connection closed');
 				try {
-					connection = net.createConnection(this.ip_port, this.ip_address, function() {
+					connection = net.createConnection(platform.ip_port, platform.ip_address, function() {
 						platform.log('Re-connected after loss of connection');
 					});
 				} catch (err) {
