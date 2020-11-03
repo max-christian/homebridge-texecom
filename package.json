@@ -1,10 +1,10 @@
 {
   "name": "homebridge-texecom",
-  "description": "A plugin for homebridge (https://github.com/nfarina/homebridge) to integrate Texecom Premier Elite zones into HomeKit",
-  "version": "2.0.0",
+  "description": "A plugin for homebridge (https://github.com/nfarina/homebridge) to integrate Texecom Premier Elite alarm systems into HomeKit",
+  "version": "3.0.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/kieranmjones/homebridge-texecom"
+    "url": "https://github.com/max-christian/homebridge-texecom"
   },
   "license": "MIT",
   "preferGlobal": true,
@@ -25,7 +25,7 @@
   },
   "dependencies": {
     "debug": "^2.2.0",
-    "serialport": "^6.2.2",
+    "serialport": "^7.0.2",
     "string": "^3.3.3",
     "zpad": "^0.5.0"
   }
