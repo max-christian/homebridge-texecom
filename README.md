@@ -1,6 +1,6 @@
 # homebridge-texecom
 
-A plugin for [Homebridge](https://github.com/nfarina/homebridge) that creates HomeKit motion, contact, smoke, or carbon monoxide sensors for alarm zones from a Texecom Premier intruder alarm via a serial connection or COM-IP module. homebridge-texecom was originated by [Kieran Jones](https://github.com/kieranmjones).
+A plugin for [Homebridge](https://github.com/nfarina/homebridge) that creates HomeKit motion, contact, smoke, or carbon monoxide sensors for alarm zones from a Texecom Premier intruder alarm via a serial connection or COM-IP module.
 
 You can receive notifications, which can be set to work only when you're away from home:
 
@@ -26,6 +26,7 @@ Example:
         "platform": "Texecom",
         "serial_device": "/dev/ttyUSB0",
         "baud_rate": 19200,
+        "udl":1234,
         "zones": [
             {
                 "name": "Living Room",
