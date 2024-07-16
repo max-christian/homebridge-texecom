@@ -1,5 +1,5 @@
 {
-  "name": "homebridge-texecom",
+  "name": "homebridge-texecom-full",
   "description": "A plugin for homebridge (https://github.com/nfarina/homebridge) to integrate Texecom Premier Elite alarm systems into HomeKit",
   "version": "4.0.0-beta",
   "repository": {
