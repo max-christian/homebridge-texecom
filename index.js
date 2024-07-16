@@ -1,5 +1,3 @@
-var Service;
-var Characteristic;
 var debug = require("debug")("TexecomAccessory");
 var serialport = require("serialport");
 var zpad = require("zpad");
@@ -7,10 +5,20 @@ var S = require('string');
 var crypto = require("crypto");
 var net = require('net');
 
+const EventEmitter = require('events');
+class ResponseEmitter extends EventEmitter { }
+const responseEmitter = new ResponseEmitter();
+
 var serialPort;
 var connection;
 
+var Accessory, Service, Characteristic;
+
+
+var service, changeAction;
+
 module.exports = function (homebridge) {
+    Accessory = homebridge.platformAccessory;
     Service = homebridge.hap.Service;
     Characteristic = homebridge.hap.Characteristic;
 
@@ -19,7 +27,7 @@ module.exports = function (homebridge) {
 }
 
 function TexecomPlatform(log, config) {
-    this.log = log;
+    this.log = log
     this.serial_device = config["serial_device"];
     this.baud_rate = config["baud_rate"];
     this.zones = config["zones"] || [];
@@ -34,12 +42,12 @@ TexecomPlatform.prototype = {
     accessories: function (callback) {
         var accessories = [];
         for (var i = 0; i < this.zones.length; i++) {
-            var zone = new TexecomAccessory(this.log, this.zones[i], "zone");
+            var zone = new TexecomAccessory(this.log, this.zones[i], "zone", this.udl, this.serial_device, this.ip_address);
             accessories.push(zone);
         }
 
         for (var i = 0; i < this.areas.length; i++) {
-            var area = new TexecomAccessory(this.log, this.areas[i], "area");
+            var area = new TexecomAccessory(this.log, this.areas[i], "area", this.udl, this.serial_device, this.ip_address);
             accessories.push(area);
         }
 
@@ -114,6 +122,7 @@ TexecomPlatform.prototype = {
                 platform.log("Serial port opened");
                 serialPort.on('data', function (data) {
                     platform.log.debug("Serial data received: " + data);
+                    responseEmitter.emit('data', data);
                     processData(data);
                 });
             });
@@ -127,6 +136,7 @@ TexecomPlatform.prototype = {
             }
             connection.on('data', function (data) {
                 platform.log.debug("IP data received: " + data);
+                responseEmitter.emit('data', data);
                 processData(data);
             });
             connection.on('end', function () {
@@ -151,9 +161,12 @@ TexecomPlatform.prototype = {
     }
 }
 
-function TexecomAccessory(log, config, accessoryType) {
+function TexecomAccessory(log, config, accessoryType, udl, serial_device, ip_address) {
     this.log = log;
     this.accessoryType = accessoryType;
+    this.udl = udl;
+    this.serial_device = serial_device;
+    this.ip_address = ip_address;
 
     if (accessoryType === "zone") {
         this.zone_number = zpad(config["zone_number"], 3);
@@ -190,7 +203,6 @@ TexecomAccessory.prototype = {
             .setCharacteristic(Characteristic.Model, "Texecom " + (this.accessoryType === "zone" ? "Zone" : "Area"))
             .setCharacteristic(Characteristic.SerialNumber, this.sn);
 
-        var service, changeAction;
 
         if (this.accessoryType === "zone") {
             switch (this.zone_type) {
@@ -262,7 +274,7 @@ TexecomAccessory.prototype = {
         if (this.accessoryType === "area") {
             service.getCharacteristic(Characteristic.SecuritySystemTargetState)
                 .on('set', function (value, callback) {
-                    this.setTargetState(parseInt(this.area_number, 10), value, callback, this.udl);
+                    this.setTargetState(parseInt(this.area_number, 10), value, callback);
                 }.bind(this));
         }
 
@@ -270,22 +282,35 @@ TexecomAccessory.prototype = {
         return [informationService, service];
     },
 
-    setTargetState: function (areaNumber, value, callback, udl) {
+    setTargetState: function (areaNumber, value, callback) {
+
+        const hexMapping = {
+            '1': 0x01,
+            '2': 0x02,
+            '3': 0x04,
+            '4': 0x08,
+            '5': 0x10,
+            '6': 0x20,
+            '7': 0x40,
+            '8': 0x80
+        };
+
+
         this.log("Setting target state for area " + areaNumber + " to " + value);
 
         var command;
         switch (value) {
             case Characteristic.SecuritySystemTargetState.STAY_ARM:
-                command = "\\Y" + stringToHex(areaNumber) + "/"; // Home
+                command = "\\Y" + String.fromCharCode(parseInt(hexMapping[areaNumber], 16)) + "/"; // Home
                 break;
             case Characteristic.SecuritySystemTargetState.AWAY_ARM:
-                command = "\\A" + stringToHex(areaNumber) + "/"; // Away arm
+                command = "\\A" + String.fromCharCode(parseInt(hexMapping[areaNumber], 16)) + "/"; // Away arm
                 break;
             case Characteristic.SecuritySystemTargetState.NIGHT_ARM:
-                command = "\\Y" + stringToHex(areaNumber) + "/"; // Night arm
+                command = "\\Y" + String.fromCharCode(parseInt(hexMapping[areaNumber], 16)) + "/"; // Night arm
                 break;
             case Characteristic.SecuritySystemTargetState.DISARM:
-                command = "\\D" + stringToHex(areaNumber) + "/"; // Disarm
+                command = "\\D" + String.fromCharCode(parseInt(hexMapping[areaNumber], 16)) + "/"; // Disarm
                 break;
             default:
                 this.log("Unknown target state: " + value);
@@ -293,58 +318,72 @@ TexecomAccessory.prototype = {
                 return;
         }
 
-        // Send the command via serial or IP connection
-        /*if (serial_device) {
-            serialPort.write("\\W" + this.udl + "/\n", function (err) {
-                if (err) {
-                    this.log("Error writing to serial port: " + err);
-                    callback(err);
-                } else {
-                    this.log("Command sent to serial port: " + "\\W" + this.udl + "/\n");
-                    callback();
-                }
-            }.bind(this));
+        //this.updateCurrentState(value);
 
-            if (serialPort.readline() === "OK\n") {
+        if (this.serial_device) {
+            writeCommandAndWaitForOKS("\\W" + this.udl + "/")
+                .then(() => writeCommandAndWaitForOKS(command))
+                .then(() => {
+                    this.updateCurrentState(value);
+                    callback(); // Successful execution
 
-                serialPort.write(command + "\n", function (err) {
-                    if (err) {
-                        this.log("Error writing to serial port: " + err);
-                        callback(err);
-                    } else {
-                        this.log("Command sent to serial port: " + command);
-                        callback();
-                    }
-                }.bind(this));
-            }
-        } else if (ip_address) {*/
+                })
+                .catch((err) => {
+                    callback(err); // Handle errors
+                });
+        } else if (this.ip_address) {
+            writeCommandAndWaitForOK("\\W" + this.udl + "/")
+                .then(() => writeCommandAndWaitForOK(command))
+                .then(() => {
+                    this.updateCurrentState(value);
+                    callback(); // Successful execution
+                })
+                .catch((err) => {
+                    callback(err); // Handle errors
+                });
+        }
+        else {
 
-        connection.write("\\W" + udl + "/\n", function (err) {
-            if (err) {
-                this.log("Error writing to IP connection: " + err);
-                //callback(err);
-            } else {
-                this.log("Command sent to IP connection: " + "\\W" + udl + "/\n");
-                //callback();
-            }
-        }.bind(this));
-
-
-
-        connection.write(command + "\n", function (err) {
-            if (err) {
-                this.log("Error writing to IP connection: " + err);
-                //callback(err);
-            } else {
-                this.log("Command sent to IP connection: " + command);
-                //callback();
-            }
-        }.bind(this));
-
-        /*} else {
             this.log("No serial device or IP address configured");
             callback(new Error("No serial device or IP address configured"));
-        }*/
+        }
+
+    },
+
+    updateCurrentState: function (newState) {
+        // Update the current state of the accessory here
+        const currentState = this.convertTargetStateToCurrentState(newState);
+
+        this.log("Updating current state to: " + currentState);
+        if (service) {
+            
+            service
+                .getCharacteristic(Characteristic.SecuritySystemTargetState)
+                .updateValue(currentState);
+            service
+                .getCharacteristic(Characteristic.SecuritySystemCurrentState)
+                .updateValue(currentState);
+
+            // Optionally, update the target state to match the current state
+        } else {
+            this.log("Error: Service not initialized.");
+        }
+    },
+
+    convertTargetStateToCurrentState: function (targetState) {
+        switch (targetState) {
+            case Characteristic.SecuritySystemTargetState.STAY_ARM:
+                return Characteristic.SecuritySystemCurrentState.STAY_ARM;
+            case Characteristic.SecuritySystemTargetState.AWAY_ARM:
+                return Characteristic.SecuritySystemCurrentState.AWAY_ARM;
+            case Characteristic.SecuritySystemTargetState.NIGHT_ARM:
+                return Characteristic.SecuritySystemCurrentState.NIGHT_ARM;
+            case Characteristic.SecuritySystemTargetState.DISARM:
+                return Characteristic.SecuritySystemCurrentState.DISARMED;
+            default:
+                this.log("Unknown target state: " + targetState);
+                return Characteristic.SecuritySystemCurrentState.DISARMED;
+        }
     }
 };
 
@@ -371,4 +410,48 @@ function stringToHex(str) {
         }
     }
     return hex;
+}
+
+function writeCommandAndWaitForOK(command, callback) {
+    return new Promise((resolve, reject) => {
+        connection.write(command, function (err) {
+            if (err) {
+                platform.log("Error writing to IP connection: " + err);
+                reject(err);
+            } else {
+                platform.log("Command sent to IP connection: " + command);
+            }
+        });
+
+        function handleData(data) {
+            if (data.toString().trim() === 'OK') {
+                responseEmitter.removeListener('data', handleData);
+                resolve();
+            }
+        }
+
+        responseEmitter.on('data', handleData);
+    });
+}
+
+function writeCommandAndWaitForOKS(command, callback) {
+    return new Promise((resolve, reject) => {
+        serialPort.write(command, function (err) {
+            if (err) {
+                platform.log("Error writing to IP connection: " + err);
+                reject(err);
+            } else {
+                platform.log("Command sent to IP connection: " + command);
+            }
+        });
+
+        function handleData(data) {
+            if (data.toString().trim() === 'OK') {
+                responseEmitter.removeListener('data', handleData);
+                resolve();
+            }
+        }
+
+        responseEmitter.on('data', handleData);
+    });
 }

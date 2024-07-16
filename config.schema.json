@@ -1,0 +1,135 @@
+{
+    "pluginAlias": "Texecom",
+    "pluginType": "platform",
+	"headerDisplay": "Official Texecom Homebridge plugin.",
+    "singular": true,
+    "schema": {
+        "type": "object",
+        "properties": {
+            "name": {
+                "type": "string",
+                "title": "Name",
+                "required": true,
+                "default": "Texecom",
+                "description": "You shouldn't need to change this."
+            },
+            "ip_address": {
+                "type": "string",
+                "title": "IP Address"
+            },
+            "ip_port": {
+                "type": "integer",
+                "title": "IP Port"
+            },
+            "serial_device": {
+                "type": "string",
+                "title": "Serial Device"
+            },
+            "baud_rate": {
+                "type": "integer",
+                "title": "Baud Rate"
+            },
+            "udl": {
+                "type": "string",
+                "title": "UDL"
+            },
+            "zones": {
+                "type": "array",
+                "title": "Zones",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "title": "Zone Name"
+                        },
+                        "zone_number": {
+                            "type": "string",
+                            "title": "Zone Number"
+                        },
+                        "zone_type": {
+                            "type": "string",
+                            "title": "Zone Type",
+                            "enum": [
+                                "contact",
+                                "motion",
+                                "smoke",
+                                "carbonmonoxide"
+                            ],
+                            "default": "motion"
+                        },
+                        "dwell": {
+                            "type": "integer",
+                            "title": "Dwell Time",
+                            "default": 1000
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "zone_number",
+                        "zone_type"
+                    ]
+                }
+            },
+            "areas": {
+                "type": "array",
+                "title": "Areas",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "title": "Area Name"
+                        },
+                        "area_number": {
+                            "type": "string",
+                            "title": "Area Number"
+                        },
+                        "area_type": {
+                            "type": "string",
+                            "title": "Area Type",
+                            "enum": [
+                                "securitysystem"
+                            ],
+                            "default": "securitysystem"
+                        },
+                        "dwell": {
+                            "type": "integer",
+                            "title": "Dwell Time",
+                            "default": 0
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "area_number",
+                        "area_type"
+                    ]
+                }
+            }
+        },
+        "oneOf": [
+            {
+                "required": [
+                    "ip_address",
+                    "ip_port"
+                ]
+            },
+            {
+                "required": [
+                    "serial_device",
+                    "baud_rate"
+                ]
+            }
+        ],
+        "required": [
+            "platform",
+            "name",
+            "udl",
+            "zones",
+            "areas"
+        ]
+    },
+    "form": [
+        "*"
+    ]
+}
