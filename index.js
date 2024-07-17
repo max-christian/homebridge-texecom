@@ -57,11 +57,10 @@ TexecomPlatform.prototype = {
         function processData(data) {
             // Received data is a zone update
             if (S(data).startsWith('"Z')) {
-
                 // Extract the data from the serial line received
-                var zone_data = Number(S(S(data).chompLeft('"Z')).left(4).s);
+                var zone_data = Number(S(S(data).between('Z')).left(4).s);
                 // Extract the zone number that is being updated
-                var updated_zone = Number(S(S(data).chompLeft('"Z')).left(3).s);
+                var updated_zone = Number(S(S(data).between('Z')).left(3).s);
                 // Is the zone active?
                 var zone_active = S(zone_data).endsWith('1');
 
@@ -281,7 +280,7 @@ TexecomAccessory.prototype = {
             service.getCharacteristic(Characteristic.SecuritySystemTargetState)
                 .on('set', function (value, callback) {
                     if (changed) {
-                        changed=false;
+                        changed = false;
                     }
                     else {
                         service_area = service;
