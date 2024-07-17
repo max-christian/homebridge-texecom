@@ -14,8 +14,9 @@ var connection;
 
 var Accessory, Service, Characteristic;
 
+var service_area;
 
-var service, changeAction;
+var changed;
 
 module.exports = function (homebridge) {
     Accessory = homebridge.platformAccessory;
@@ -54,7 +55,6 @@ TexecomPlatform.prototype = {
         platform = this;
 
         function processData(data) {
-            platform.log("DATA: " + data);
             // Received data is a zone update
             if (S(data).startsWith('"Z')) {
 
@@ -69,7 +69,7 @@ TexecomPlatform.prototype = {
 
                 for (var i = 0; i < accessories.length; i++) {
                     if (accessories[i].accessoryType === "zone" && accessories[i].zone_number == updated_zone) {
-                        platform.log.debug("Zone match found, updating zone status in HomeKit to " + zone_active);
+                        platform.log("Zone match found, updating zone status in HomeKit to " + zone_active);
                         accessories[i].changeHandler(zone_active);
                         break;
                     }
@@ -85,28 +85,32 @@ TexecomPlatform.prototype = {
                     case "L":
                         stateValue = Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED;
                         platform.log("Area " + updated_area + " triggered");
+                        changed = true;
                         break;
                     case "D":
                         stateValue = Characteristic.SecuritySystemCurrentState.DISARMED;
                         platform.log("Area " + updated_area + " disarmed");
+                        changed = true;
                         break;
                     case "A":
                         stateValue = Characteristic.SecuritySystemCurrentState.AWAY_ARM;
                         platform.log("Area " + updated_area + " armed");
+                        changed = true;
                         break;
                     default:
                         platform.log("Unknown status letter " + status);
+                        changed = true;
                         return;
                 }
                 for (var i = 0; i < accessories.length; i++) {
                     if (accessories[i].accessoryType === "area" && accessories[i].area_number == updated_area) {
-                        platform.log.debug("Area match found, updating area status in HomeKit to " + stateValue);
+                        platform.log("Area match found, updating area status in HomeKit to " + stateValue);
                         accessories[i].changeHandler(stateValue);
                         break;
                     }
                 }
             } else {
-                platform.log.debug("Unknown string from Texecom: " + S(data));
+                platform.log("Unknown string from Texecom: " + S(data));
             }
         }
 
@@ -121,7 +125,7 @@ TexecomPlatform.prototype = {
             serialPort.on("open", function () {
                 platform.log("Serial port opened");
                 serialPort.on('data', function (data) {
-                    platform.log.debug("Serial data received: " + data);
+                    platform.log("Serial data received: " + data);
                     responseEmitter.emit('data', data);
                     processData(data);
                 });
@@ -135,7 +139,7 @@ TexecomPlatform.prototype = {
                 platform.log(err);
             }
             connection.on('data', function (data) {
-                platform.log.debug("IP data received: " + data);
+                platform.log("IP data received: " + data);
                 responseEmitter.emit('data', data);
                 processData(data);
             });
@@ -187,13 +191,15 @@ function TexecomAccessory(log, config, accessoryType, udl, serial_device, ip_add
         shasum.update(this.zone_number || this.area_number);
 
         this.sn = shasum.digest('base64');
-        log.debug('Computed SN ' + this.sn);
+        log('Computed SN ' + this.sn);
     }
 }
 
 TexecomAccessory.prototype = {
 
     getServices: function () {
+
+        var service, changeAction;
 
         var informationService = new Service.AccessoryInformation();
 
@@ -255,7 +261,7 @@ TexecomAccessory.prototype = {
 
         this.changeHandler = function (status) {
             var newState = status;
-            platform.log.debug("Dwell = " + this.dwell_time);
+            platform.log("Dwell = " + this.dwell_time);
 
             if (!newState && this.dwell_time > 0) {
                 this.dwell_timer = setTimeout(function () { changeAction(newState); }.bind(this), this.dwell_time);
@@ -266,7 +272,7 @@ TexecomAccessory.prototype = {
                 changeAction(newState);
             }
 
-            platform.log.debug("Changing state with changeHandler to " + newState);
+            platform.log("Changing state with changeHandler to " + newState);
 
         }.bind(this);
 
@@ -274,7 +280,13 @@ TexecomAccessory.prototype = {
         if (this.accessoryType === "area") {
             service.getCharacteristic(Characteristic.SecuritySystemTargetState)
                 .on('set', function (value, callback) {
-                    this.setTargetState(parseInt(this.area_number, 10), value, callback);
+                    if (changed) {
+                        changed=false;
+                    }
+                    else {
+                        service_area = service;
+                        this.setTargetState(parseInt(this.area_number, 10), value, callback);
+                    }
                 }.bind(this));
         }
 
@@ -355,16 +367,16 @@ TexecomAccessory.prototype = {
         const currentState = this.convertTargetStateToCurrentState(newState);
 
         this.log("Updating current state to: " + currentState);
-        if (service) {
-            
-            service
-                .getCharacteristic(Characteristic.SecuritySystemTargetState)
-                .updateValue(currentState);
-            service
+        if (service_area) {
+
+            service_area
                 .getCharacteristic(Characteristic.SecuritySystemCurrentState)
                 .updateValue(currentState);
 
             // Optionally, update the target state to match the current state
+            /*service_area
+            .getCharacteristic(Characteristic.SecuritySystemTargetState)
+            .updateValue(currentState);*/
         } else {
             this.log("Error: Service not initialized.");
         }
@@ -386,31 +398,6 @@ TexecomAccessory.prototype = {
         }
     }
 };
-
-function stringToHex(str) {
-    // Create a mapping of characters to their hexadecimal values
-    const hexMapping = {
-        '1': 0x01,
-        '2': 0x02,
-        '3': 0x04,
-        '4': 0x08,
-        '5': 0x10,
-        '6': 0x20,
-        '7': 0x40,
-        '8': 0x80
-    };
-
-    let hex = '';
-    for (let i = 0; i < str.length; i++) {
-        const char = str[i];
-        if (hexMapping[char]) {
-            hex += hexMapping[char].toString(16).padStart(2, '0'); // Convert to hex and pad with leading zeros
-        } else {
-            throw new Error(`Invalid character encountered: ${char}`);
-        }
-    }
-    return hex;
-}
 
 function writeCommandAndWaitForOK(command, callback) {
     return new Promise((resolve, reject) => {

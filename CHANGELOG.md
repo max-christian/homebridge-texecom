@@ -1,6 +1,10 @@
 # Change log
 
 This change log documents all release versions of homebridge-texecom
+### 4.1.0 (2024-07-17)
+
+- **FEATURE** - UDL code has been added to ARM, DISARM and STAYARM the system.
+- **FEATURE** - Added Schema will improve later.
 
 ### 1.0.3 (2017-01-28)
 

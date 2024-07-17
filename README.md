@@ -4,11 +4,11 @@ A plugin for [Homebridge](https://github.com/nfarina/homebridge) that creates Ho
 
 You can receive notifications, which can be set to work only when you're away from home:
 
-![example of notifications](https://github.com/max-christian/homebridge-texecom/blob/master/images/example-notifications.jpg?raw=true)
+![example of notifications](https://github.com/K1LL3R234/homebridge-texecom/blob/master/images/example-notifications.jpg?raw=true)
 
 Another great use is to use the alarm's motion sensors to switch lights on automatically:
 
-![example of automation](https://github.com/max-christian/homebridge-texecom/blob/master/images/example-automation.jpg?raw=true)
+![example of automation](https://github.com/K1LL3R234/homebridge-texecom/blob/master/images/example-automation.jpg?raw=true)
 
 You can also set automations to happen when you arm the alarm and when the alarm goes off.
 
@@ -106,6 +106,8 @@ To configure your COM1 port for the Crestron protocol:
 7. Press "Yes" to confirm and save.
 
 Press "Menu" repeatedly to exit the engineer menu.
+
+Make sure you program your UDL code in the panel too.
 
 If connecting to a COM-IP, set up the COM-IP as usual and ensure it is working. Then change the configuration for the port the COM-IP is connected to to Crestron as detailed above. This allows the panel to configure the IP address into the module, then changing to Crestron will allow the panel to input/output the correct commands.
 
