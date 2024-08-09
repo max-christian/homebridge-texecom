@@ -2,6 +2,8 @@
 
 A plugin for [Homebridge](https://github.com/nfarina/homebridge) that creates HomeKit motion, contact, smoke, or carbon monoxide sensors for alarm zones from a Texecom Premier intruder alarm via a serial connection or COM-IP module. homebridge-texecom was originated by [Kieran Jones](https://github.com/kieranmjones).
 
+See the armdisarm branch for arm/disarm via HomeKit (in progress as of August 2024).
+
 You can receive notifications, which can be set to work only when you're away from home:
 
 ![example of notifications](https://github.com/max-christian/homebridge-texecom/blob/master/images/example-notifications.jpg?raw=true)
