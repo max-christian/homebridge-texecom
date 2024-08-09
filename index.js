@@ -7,6 +7,10 @@ var S = require('string');
 var crypto = require("crypto");
 var net = require('net');
 
+const EventEmitter = require('events');
+class ResponseEmitter extends EventEmitter { }
+const responseEmitter = new ResponseEmitter();
+
 module.exports = function(homebridge) {
     Service = homebridge.hap.Service;
     Characteristic = homebridge.hap.Characteristic;
@@ -19,6 +23,7 @@ function TexecomPlatform(log, config){
     this.log = log;
     this.serial_device = config["serial_device"];
     this.baud_rate = config["baud_rate"];
+    this.udl = config["udl"];
     this.zones = config["zones"] || [];
     this.areas = config["areas"] || [];
 	this.ip_address = config["ip_address"];
@@ -116,9 +121,12 @@ TexecomPlatform.prototype = {
 				platform.log("Serial port opened");
 				serialPort.on('data', function(data) {
 					platform.log.debug("Serial data received: " + data);
+                                        responseEmitter.emit('data', data);
 					processData(data);
 				});
 			});  
+
+                        this.texecomConnection = serialPort;
 		} else if (this.ip_address) {
 			try {
 				connection = net.createConnection(platform.ip_port, platform.ip_address, function() {
@@ -129,6 +137,7 @@ TexecomPlatform.prototype = {
 			}
 			connection.on('data', function(data) {
 				platform.log.debug("IP data received: " + data);
+                                responseEmitter.emit('data', data);
 				processData(data);
 			});
 			connection.on('end', function() {
@@ -145,6 +154,8 @@ TexecomPlatform.prototype = {
 					platform.log(err);
 				}
 			});
+
+                        this.texecomConnection = connection;
 		} else {
 			this.log("Must set either serial_device or ip_address in configuration.");
 		}
@@ -217,10 +228,23 @@ TexecomAccessory.prototype = {
             changeAction = function(newState){
                 service.getCharacteristic(Characteristic.SecuritySystemCurrentState)
                         .setValue(newState);
-                service.getCharacteristic(Characteristic.SecuritySystemTargetState)
-                        .setValue(newState);
             };
-            changeAction(Characteristic.SecuritySystemCurrentState.DISARMED); // startup default
+
+            // we don't know the alarm's state at startup, assume disarmed:
+            changeAction(Characteristic.SecuritySystemCurrentState.DISARMED);
+            service.getCharacteristic(Characteristic.SecuritySystemTargetState).setValue(Characteristic.SecuritySystemTargetState.DISARM);
+
+            var area = this;
+
+            service.getCharacteristic(Characteristic.SecuritySystemTargetState)
+                .on('set', function (value, callback) {
+                    if (platform.udl != null) {
+                        areaTargetSecurityStateSet(platform, area, value, callback);
+                    } else {
+                        platform.log("No UDL configured. Add your UDL to enable arm/disarm from HomeKit.");
+                        callback(null);
+                    }
+                });
             break;
         default:
         	service = new Service.MotionSensor();
@@ -251,3 +275,79 @@ TexecomAccessory.prototype = {
         return [informationService, service];
     }
 };
+
+function areaTargetSecurityStateSet(platform, accessory, value, callback) {
+    var area_number = String.fromCharCode(accessory.zone_number);
+    // thanks to @K1LL3R234 for contributing arm/disarm function:
+    var command;
+    switch (value) {
+        case Characteristic.SecuritySystemTargetState.NIGHT_ARM:
+            command = "\\Y" + area_number + "/"; 
+            break;
+        case Characteristic.SecuritySystemTargetState.AWAY_ARM:
+            command = "\\A" + area_number + "/";
+            break;
+        case Characteristic.SecuritySystemTargetState.STAY_ARM:
+        case Characteristic.SecuritySystemTargetState.DISARM:
+            command = "\\D" + area_number + "/";
+            break;
+        default:
+            this.log("Unknown target state: " + value);
+            callback(new Error("Unknown target state"));
+            return;
+    }
+
+    platform.log("Sending arm/disarm command " + value + " to area " + accessory.zone_number);
+
+    writeCommandAndWaitForOK(platform.texecomConnection, "\\W" + platform.udl + "/")
+        .then(() => writeCommandAndWaitForOK(platform.texecomConnection, command))
+        .then(() => {
+            // OK response from alarm is only indication that the target state has been reached
+            var currentState;
+            switch (value) {
+            case Characteristic.SecuritySystemTargetState.NIGHT_ARM:
+                currentState = Characteristic.SecuritySystemCurrentState.NIGHT_ARM;
+                break;
+            case Characteristic.SecuritySystemTargetState.AWAY_ARM:
+                currentState = Characteristic.SecuritySystemCurrentState.AWAY_ARM;
+                break;
+            case Characteristic.SecuritySystemTargetState.STAY_ARM:
+            case Characteristic.SecuritySystemTargetState.DISARM:
+                currentState = Characteristic.SecuritySystemCurrentState.DISARMED;
+                break;
+            default:
+                platform.log("Unknown target alarm state " + value);
+                callback(new Error("Unknown target state"));
+                return;
+            }
+            platform.log("Setting current status of area " + accessory.zone_number + " to " + currentState + " because alarm responded OK");
+            accessory.getCharacteristic(Characteristic.SecuritySystemCurrentState)
+                        .setValue(currentState);
+            callback();
+        })
+        .catch((err) => {
+            callback(err); // Handle errors
+    });
+}
+
+function writeCommandAndWaitForOK(connection, command, callback) {
+    return new Promise((resolve, reject) => {
+        function handleData(data) {
+            if (data.toString().trim() === 'OK') {
+                responseEmitter.removeListener('data', handleData);
+                resolve();
+            }
+        }
+
+        responseEmitter.on('data', handleData);
+
+        connection.write(command, function (err) {
+            if (err) {
+                platform.log("Error writing to connection: " + err);
+                reject(err);
+            } else {
+                platform.log("Command sent: " + command);
+            }
+        });
+    });
+}
