@@ -1,6 +1,6 @@
 # homebridge-texecom
 
-A plugin for [Homebridge](https://github.com/nfarina/homebridge) that creates HomeKit motion, contact, smoke, or carbon monoxide sensors for alarm zones from a Texecom Premier intruder alarm via a serial connection or COM-IP module. homebridge-texecom was originated by [Kieran Jones](https://github.com/kieranmjones).
+A plugin for [Homebridge](https://github.com/nfarina/homebridge) that creates HomeKit motion, contact, smoke, or carbon monoxide sensors for alarm zones from a Texecom Premier intruder alarm via a serial or IP connection. homebridge-texecom was originated by [Kieran Jones](https://github.com/kieranmjones).
 
 See the armdisarm branch for arm/disarm via HomeKit (in progress as of August 2024).
 
@@ -12,15 +12,13 @@ Another great use is to use the alarm's motion sensors to switch lights on autom
 
 ![example of automation](https://github.com/max-christian/homebridge-texecom/blob/master/images/example-automation.jpg?raw=true)
 
-You can also set automations to happen when you arm the alarm and when the alarm goes off.
-
-**IMPORTANT** - To use this plugin you will require a Texecom alarm system and a PC-COM, COM-IP or USB-COM serial interface. If using the PC-COM or USB-COM, you must also have nothing already utilising COM1 on the alarm panel, or be able to move existing modules connected to COM1 to a different COM port on the alarm panel. The support for IP is new and is intended for use with the COM-IP -- we don't know if it works with the SmartCom, so let us know if you get it working.
+You can also set automations to happen when you arm the alarm and when the alarm goes off. You can arm and disarm the alarm directly from HomeKit if you know your alarm's UDL code. You need the UDL, sometimes known as the engineer code, for arm/disarm to work - the number you enter on the panel to arm/disarm will not work.
 
 ## Configuration
 
-Texecom zones must be configured individually in the Homebridge config.json file with the appropriate zone number from Texecom. Configuring areas is optional, but is required if you want to see if the alarm if set or have automations or notifications when the alarm is armed, disarmed or triggered. You probably have many zones and only one area.
+Texecom zones must be configured individually in the Homebridge config.json file with the appropriate zone number from Texecom. Configuring areas is optional, but is required if you want to see the arm/disarm/triggered state. If you want to arm/disarm using HomeKit then you also need to configure the UDL. You probably have many zones and only one area.
 
-Example:
+Serial Example:
 
 ```json
 "platforms": [
@@ -54,6 +52,40 @@ Example:
 ]
 ```
 
+IP Example with UDL:
+
+```json
+"platforms": [
+    {
+        "platform": "Texecom",
+        "ip_address": "192.168.0.100",
+        "ip_port": 10001,
+        "udl": "123456",
+        "zones": [
+            {
+                "name": "Living Room",
+                "zone_number": "7",
+                "zone_type": "motion",
+                "dwell": 1000
+            },
+            {
+                "name": "Front Door",
+                "zone_number": "15",
+                "zone_type": "contact",
+                "dwell": 1000
+            }
+        ],
+        "areas": [
+            {
+                "name": "Texecom Alarm",
+                "area_number": "1",
+                "area_type": "securitysystem",
+                "dwell": 0
+            }
+        ]
+    }
+]
+```
 
 ### Global Configuration
 
@@ -108,10 +140,10 @@ To configure your COM1 port for the Crestron protocol:
 
 Press "Menu" repeatedly to exit the engineer menu.
 
-If connecting to a COM-IP, set up the COM-IP as usual and ensure it is working. Then change the configuration for the port the COM-IP is connected to to Crestron as detailed above. This allows the panel to configure the IP address into the module, then changing to Crestron will allow the panel to input/output the correct commands.
+If connecting to a COM-IP, set up the COM-IP as usual and ensure it is working, e.g. by connecting with Wintex. Then change the configuration for the port the COM-IP is connected to to Crestron as detailed above. This allows the panel to configure the IP address into the module, then changing to Crestron will allow the panel to input/output the correct commands.
 
-## Future features
+## Many thanks
 
-Alarm systems are complicated and have a lot of features, not all them are suitable for integrating to HomeKit but many of them can be integrated.
-
-* **Panic buttons** - Investigate the possibility of integrating the medical, panic, and fire buttons into HomeKit as buttons/switches to manually trigger those alerts.
+- [Kieran Jones](https://github.com/kieranmjones) for originating homebridge-texecom and who first freely documented the Cestron protocol.
+- [Chris Shucksmith](https://github.com/shuckc) provided useful documentation of the [Simple Protocol](https://github.com/shuckc/pialarm/blob/master/protocol/readme.md)
+- [Chris Posthumus](https://github.com/K1LL3R234) contributed arm/disarm code.
