@@ -378,7 +378,7 @@ function writeCommandAndWaitForOK(connection, command) {
                 platform.log("Error writing to connection: " + err);
                 reject(err);
             } else {
-                platform.log("Command sent: " + command);
+                //platform.log("Command sent: " + command);
             }
         });
 
