@@ -11,6 +11,8 @@ const EventEmitter = require('events');
 class ResponseEmitter extends EventEmitter { }
 const responseEmitter = new ResponseEmitter();
 
+var setByAlarm = false;
+
 module.exports = function(homebridge) {
     Service = homebridge.hap.Service;
     Characteristic = homebridge.hap.Characteristic;
@@ -99,6 +101,7 @@ TexecomPlatform.prototype = {
 				for(var i = 0; i < areaCount; i++){
 					if(areaAccessories[i].zone_number == updated_area){
 						platform.log.debug("Area match found, updating area status in HomeKit to " + stateValue);
+                                                setByAlarm = true;
 						areaAccessories[i].changeHandler(stateValue);
 						break;
 					}
@@ -135,6 +138,7 @@ TexecomPlatform.prototype = {
 			} catch (err) {
 				platform.log(err);
 			}
+                        connection.setNoDelay(true);
 			connection.on('data', function(data) {
 				platform.log.debug("IP data received: " + data);
                                 responseEmitter.emit('data', data);
@@ -184,7 +188,7 @@ function TexecomAccessory(log, zoneConfig) {
 TexecomAccessory.prototype = {
 
     getServices: function() {
-
+        const me = this;
         var informationService = new Service.AccessoryInformation();
 
         informationService
@@ -226,23 +230,48 @@ TexecomAccessory.prototype = {
         case "securitysystem":
             service = new Service.SecuritySystem();
             changeAction = function(newState){
-                service.getCharacteristic(Characteristic.SecuritySystemCurrentState)
-                        .setValue(newState);
+                var targetState; 
+                switch (newState) {
+                case Characteristic.SecuritySystemCurrentState.NIGHT_ARM:
+                    targetState = Characteristic.SecuritySystemTargetState.NIGHT_ARM;
+                    break;
+                case Characteristic.SecuritySystemCurrentState.AWAY_ARM:
+                    targetState = Characteristic.SecuritySystemTargetState.AWAY_ARM;
+                    break;
+                case Characteristic.SecuritySystemCurrentState.STAY_ARM:
+                    targetState = Characteristic.SecuritySystemTargetState.STAY_ARM;
+                    break;
+                case Characteristic.SecuritySystemCurrentState.DISARMED:
+                    targetState = Characteristic.SecuritySystemTargetState.DISARM;
+                    break;
+                default:
+                    targetState = null; // alarm triggered has no corresponding target state
+                    break;
+                }
+                service.getCharacteristic(Characteristic.SecuritySystemCurrentState).setValue(newState);
+                if (targetState != null) {
+                    service.getCharacteristic(Characteristic.SecuritySystemTargetState).setValue(targetState);
+                }
+                me.log("Set target state " + targetState + " and current state " + newState + " in response to notification from alarm");
             };
 
-            // we don't know the alarm's state at startup, assume disarmed:
+            // we don't know the alarm's state at startup, safer to assume disarmed:
             changeAction(Characteristic.SecuritySystemCurrentState.DISARMED);
-            service.getCharacteristic(Characteristic.SecuritySystemTargetState).setValue(Characteristic.SecuritySystemTargetState.DISARM);
 
             var area = this;
 
             service.getCharacteristic(Characteristic.SecuritySystemTargetState)
                 .on('set', function (value, callback) {
+                    if (setByAlarm) {
+                        platform.log("Not sending command to alarm for change to state " + value + " because the state change appears to have come from the alarm itself.");
+                        setByAlarm = false;
+                        return;
+                    }
                     if (platform.udl != null) {
-                        areaTargetSecurityStateSet(platform, area, value, callback);
+                        areaTargetSecurityStateSet(platform, area, service, value, callback);
                     } else {
                         platform.log("No UDL configured. Add your UDL to enable arm/disarm from HomeKit.");
-                        callback(null);
+                        callback(new Error("No UDL configured"));
                     }
                 });
             break;
@@ -276,20 +305,20 @@ TexecomAccessory.prototype = {
     }
 };
 
-function areaTargetSecurityStateSet(platform, accessory, value, callback) {
+function areaTargetSecurityStateSet(platform, accessory, service, value, callback) {
     var area_number = String.fromCharCode(accessory.zone_number);
     // thanks to @K1LL3R234 for contributing arm/disarm function:
     var command;
     switch (value) {
         case Characteristic.SecuritySystemTargetState.NIGHT_ARM:
-            command = "\\Y" + area_number + "/"; 
+            command = "Y" + area_number; 
             break;
         case Characteristic.SecuritySystemTargetState.AWAY_ARM:
-            command = "\\A" + area_number + "/";
+            command = "A" + area_number;
             break;
         case Characteristic.SecuritySystemTargetState.STAY_ARM:
         case Characteristic.SecuritySystemTargetState.DISARM:
-            command = "\\D" + area_number + "/";
+            command = "D" + area_number;
             break;
         default:
             this.log("Unknown target state: " + value);
@@ -299,7 +328,7 @@ function areaTargetSecurityStateSet(platform, accessory, value, callback) {
 
     platform.log("Sending arm/disarm command " + value + " to area " + accessory.zone_number);
 
-    writeCommandAndWaitForOK(platform.texecomConnection, "\\W" + platform.udl + "/")
+    writeCommandAndWaitForOK(platform.texecomConnection, "W" + platform.udl)
         .then(() => writeCommandAndWaitForOK(platform.texecomConnection, command))
         .then(() => {
             // OK response from alarm is only indication that the target state has been reached
@@ -312,6 +341,8 @@ function areaTargetSecurityStateSet(platform, accessory, value, callback) {
                 currentState = Characteristic.SecuritySystemCurrentState.AWAY_ARM;
                 break;
             case Characteristic.SecuritySystemTargetState.STAY_ARM:
+                currentState = Characteristic.SecuritySystemCurrentState.STAY_ARM;
+                break;
             case Characteristic.SecuritySystemTargetState.DISARM:
                 currentState = Characteristic.SecuritySystemCurrentState.DISARMED;
                 break;
@@ -321,16 +352,17 @@ function areaTargetSecurityStateSet(platform, accessory, value, callback) {
                 return;
             }
             platform.log("Setting current status of area " + accessory.zone_number + " to " + currentState + " because alarm responded OK");
-            accessory.getCharacteristic(Characteristic.SecuritySystemCurrentState)
+            service.getCharacteristic(Characteristic.SecuritySystemCurrentState)
                         .setValue(currentState);
             callback();
         })
         .catch((err) => {
+            platform.log("Callback with error " + err);
             callback(err); // Handle errors
     });
 }
 
-function writeCommandAndWaitForOK(connection, command, callback) {
+function writeCommandAndWaitForOK(connection, command) {
     return new Promise((resolve, reject) => {
         function handleData(data) {
             if (data.toString().trim() === 'OK') {
@@ -341,7 +373,7 @@ function writeCommandAndWaitForOK(connection, command, callback) {
 
         responseEmitter.on('data', handleData);
 
-        connection.write(command, function (err) {
+        connection.write("\\" + command + "/", function (err) {
             if (err) {
                 platform.log("Error writing to connection: " + err);
                 reject(err);
@@ -349,5 +381,10 @@ function writeCommandAndWaitForOK(connection, command, callback) {
                 platform.log("Command sent: " + command);
             }
         });
+
+        setTimeout(() => {
+            responseEmitter.removeListener('data', handleData);
+            reject(new Error("Timeout"));
+        }, 2000);
     });
 }
